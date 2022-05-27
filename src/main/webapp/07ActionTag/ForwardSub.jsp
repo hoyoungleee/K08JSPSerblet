@@ -14,7 +14,7 @@
 		</li>
 
 		<li>
-			request 영역 : <%= pageContext.getAttribute("aAttr") %>		
+			request 영역 : <%= request.getAttribute("rAttr") %>		
 		</li>
 	</ul>
 </body>
