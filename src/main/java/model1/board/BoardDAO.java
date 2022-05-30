@@ -107,4 +107,85 @@ public class BoardDAO extends JDBConnect {
 		//List.jsp로 컬렉션을 반환한다.
 		return bbs;
 	}
+	
+	//사용자가 입력한 내용을 board테이블에 입력(insert) 처리한다.
+	public int insertWrite(BoardDTO dto) {
+		//입력결과 확인용 변수
+		int result = 0;
+		
+		try {
+			//인파라미터가 있는 동적쿼리문 작성(사용자의 입력에 따라 달라짐)
+			String query = "INSERT INTO board( "
+							+ " num,title,content,id,visitcount) "
+							+ " VALUES ( "
+							+ " seq_board_num.NEXTVAL, ?, ?, ?, 0)";
+			//동적쿼리문 실행을 위한 prepared객체 생성
+			psmt = con.prepareStatement(query);
+			//인파라미터 설정
+			psmt.setString(1, dto.getTitle());
+			psmt.setString(2, dto.getContent());
+			psmt.setString(3, dto.getId());
+			//쿼리문실행 : 행에 영향을 미치는 쿼리이므로 executeUpdate() 메서드 사용함.
+			//입력에 성공하면 1, 실패하면 0을 반환한다.
+			result = psmt.executeUpdate();
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+		}
+		return result;
+	}
+	//상세보기를 위해 매개변수로 전달된 일련번호에 해당하는 게시물을 인출한다.
+	public BoardDTO selectView(String num) {
+		
+		BoardDTO dto = new BoardDTO();
+		
+		//join을 이용해서 member테이블의 name컬럼까지 가져온다.
+		String query = "SELECT B.*, M.name "
+						+ " FROM member M INNER JOIN board B "
+						+ " ON M.id=B.id "
+						+ " WHERE num=?";
+		try {
+			psmt = con.prepareStatement(query);
+			psmt.setString(1, num);
+			rs = psmt.executeQuery();
+		
+			//일련번호는 중복되지 않으므로 if문으로 처리한다.
+			//게시판 목록처럼 여러개의 레코드를 가져온다면 while문을 사용하면 된다.
+			if(rs.next()) {
+				//DTO에 레코드의 내용을 추가한다.
+				dto.setNum(rs.getString(1));
+				dto.setTitle(rs.getString(2));//인덱스를 통해 값 인출
+				dto.setContent(rs.getString("content"));//컬럼명을 통해 값 인출
+				dto.setPostdate(rs.getDate("postdate"));//날짜타입이므로 getDated()로 인출
+				dto.setId(rs.getString("id"));
+				dto.setVisitcount(rs.getString(6));
+				dto.setName(rs.getString("name"));
+			}
+		}
+		catch(Exception e) {
+			System.out.println("게시물 상세보기 중 예외 발생");
+			e.printStackTrace();
+		}
+		
+		return dto;
+	}
+	
+	//게시물의 조회수를 1증가 시킨다.
+	public void updateVisitCount(String num) {
+		//게시물의 일련번호를 매개변수로 받은 후 visitcount를 1 증가시킨다.
+		//해당 컬럼은 number타입이므로 덧셈이 가능하다.
+		String query = "UPDATE board SET "
+						+ " visitcount=visitcount+1 "
+						+ "WHERE num=?";
+		
+		try {
+			psmt= con.prepareStatement(query);
+			psmt.setString(1, num);
+			psmt.executeQuery();
+		}
+		catch(Exception e) {
+			System.out.println("게시물 조회수 증가 중 예외 발생");
+			e.printStackTrace();
+		}
+	}
 }
