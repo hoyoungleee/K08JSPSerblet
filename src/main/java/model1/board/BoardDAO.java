@@ -188,4 +188,114 @@ public class BoardDAO extends JDBConnect {
 			e.printStackTrace();
 		}
 	}
+	//게시물 수정하기
+	public int updateEdit(BoardDTO dto) {
+		int result = 0;
+		
+		try {
+			
+			String query = "UPDATE board SET "
+							+ " title=?, content=? "
+							+ " WHERE num=? ";
+			psmt = con.prepareStatement(query);
+			psmt.setString(1, dto.getTitle());
+			psmt.setString(2, dto.getContent());
+			psmt.setString(3, dto.getNum());
+			//수정된 행의 갯수가 반환된다. 없을 시 0이 반환
+			result = psmt.executeUpdate();
+		}
+		catch(Exception e) {
+			System.out.println("게시물 수정 중 예외 발생");
+			e.printStackTrace();
+		}
+		return result;
+	}
+	
+	//게시물 삭제를 위해 delete쿼리문을 실행한다.
+	public int deletePost(BoardDTO dto) {
+		int result = 0;
+		
+		try {
+			String query = "DELETE FROM board WHERE num=?";
+			
+			psmt= con.prepareStatement(query);
+			psmt.setString(1, dto.getNum());
+			//쿼리문의 영향을 받은 행의 갯수가 result에 저장된다.
+			//적용된 (삭제된) 행의 갯수를 반환한다. 없을 시 0이 반환
+			result = psmt.executeUpdate();
+		}
+		catch(Exception e) {
+			e.printStackTrace();
+			System.out.println("게시물 삭제 중 예외발생");
+		}
+		return result;
+	}
+	
+	//게시판의 페이징 처리를 위한 메서드 
+	public List<BoardDTO> selectListPage(Map<String, Object> map){
+		List<BoardDTO> bbs = new Vector<BoardDTO>();
+
+		/*
+		3개의 서브쿼리문을 통해 각 페이지에 출력할 게시판 목록을
+		인출할 수 있는 쿼리문을 작성한다. (자세한 내용은 JDBC 실습.sql 참조)
+		*/
+		String query = " SELECT * FROM ( "
+					+ "		SELECT Tb.*, ROWNUM rNum FROM ( "
+					+ " 		SELECT * FROM board ";
+		//검색조건추가. 검색어가 있는 경우에만 where절이 추가된다.
+		if(map.get("searchWord") != null) {
+			query += " WHERE " + map.get("searchField")
+					+ " LIKE '%" + map.get("searchWord")+ "%' "; 
+		}
+		query += "	ORDER BY num DESC"
+				+"	) Tb "
+				+" ) "
+				+" WHERE rNum BETWEEN ? AND ?";
+		/*
+		between절 대신 비교연산자를 사용하면 다음가 같이 수정할 수 있다.
+		=> where rNum>=? and rNum<=? 
+		*/
+		
+		//문자열을 연결할 때는 StringBuffer클래스를 사용하면 유용하다.
+		StringBuffer sb = new StringBuffer();
+		sb.append(" SELECT * FROM ");
+		sb.append(" 	(select tb.*, rownum rNum from ");
+		sb.append(" 		(select * from board order by num desc) tb) ");
+		sb.append(" where rNum>=11 and rNum<=20;");
+		sb.toString();//합친 문자열 출력
+		
+		
+		
+		
+		try {
+			psmt = con.prepareStatement(query);
+			/*
+			인파라미터 설정 : JSP에서 해당 페이지에 출력할 게시물의 구간을
+				계산한 후 Map컬렉션에 저장하고 DAO로 전달하면 해당 값으로
+				쿼리문을 완성한다.
+			*/
+			psmt.setString(1, map.get("start").toString());
+			psmt.setString(2, map.get("end").toString());
+			rs = psmt.executeQuery();
+			
+			while(rs.next()) {
+				BoardDTO dto = new BoardDTO();
+				dto.setNum(rs.getString("num"));
+				dto.setTitle(rs.getString("title"));
+				dto.setContent(rs.getString("content"));
+				dto.setPostdate(rs.getDate("postdate"));
+				dto.setId(rs.getString("id"));
+				dto.setVisitcount(rs.getString("visitcount"));
+				
+				//반환할 결과 목록을 List컬렉션에 추가한다.
+				bbs.add(dto);
+			}
+		}
+		catch(Exception e) {
+			System.out.println("게시물 조회 중 예외 발생");
+			e.printStackTrace();
+		}
+		return bbs;
+	}
+	
 }
